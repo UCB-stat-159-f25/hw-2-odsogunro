@@ -1,0 +1,102 @@
+[PROMPT]
+
+---------------------------------------------------------------------------
+AttributeError                            Traceback (most recent call last)
+Cell In[15], line 18
+     16 # to remove effects at the beginning and end of the data stretch, window the data
+     17 # https://en.wikipedia.org/wiki/Window_function#Tukey_window
+---> 18 try:   dwindow = signal.tukey(template.size, alpha=1./8)  # Tukey window preferred, but requires recent scipy version 
+     19 except: dwindow = signal.blackman(template.size)          # Blackman window OK if Tukey is not available
+
+AttributeError: module 'scipy.signal' has no attribute 'tukey'
+
+During handling of the above exception, another exception occurred:
+
+AttributeError                            Traceback (most recent call last)
+Cell In[15], line 19
+     16 # to remove effects at the beginning and end of the data stretch, window the data
+     17 # https://en.wikipedia.org/wiki/Window_function#Tukey_window
+     18 try:   dwindow = signal.tukey(template.size, alpha=1./8)  # Tukey window preferred, but requires recent scipy version 
+---> 19 except: dwindow = signal.blackman(template.size)          # Blackman window OK if Tukey is not available
+     21 # prepare the template fft.
+     22 template_fft = np.fft.fft(template*dwindow) / fs
+
+AttributeError: module 'scipy.signal' has no attribute 'blackman'
+
+
+
+
+[RESPONSE]
+
+That error means your `scipy.signal` module version doesn’t have the `tukey()` **or** `blackman()` window functions available — both live in different namespaces depending on your SciPy version.
+
+Here’s how to fix it:
+
+---
+
+### ✅ **Option 1: Use `scipy.signal.windows` (modern versions)**
+
+In newer SciPy (≥ 0.16 for `tukey`, ≥ 0.19 for `windows` submodule):
+
+```python
+from scipy.signal import windows
+
+try:
+    dwindow = windows.tukey(template.size, alpha=1/8)
+except Exception:
+    dwindow = windows.blackman(template.size)
+```
+
+---
+
+### ✅ **Option 2: Backward-compatible fallback**
+
+If you need compatibility with both older and newer SciPy versions:
+
+```python
+import numpy as np
+import scipy.signal as signal
+
+# Try multiple locations for the window functions
+try:
+    dwindow = signal.windows.tukey(template.size, alpha=1/8)
+except AttributeError:
+    try:
+        dwindow = signal.tukey(template.size, alpha=1/8)
+    except AttributeError:
+        try:
+            dwindow = signal.windows.blackman(template.size)
+        except AttributeError:
+            dwindow = np.blackman(template.size)
+```
+
+---
+
+### ✅ **Option 3: Use NumPy built-ins**
+
+If you don’t want to rely on SciPy at all:
+
+```python
+import numpy as np
+dwindow = np.blackman(template.size)
+```
+
+(`np.blackman()` is always available.)
+
+---
+
+### 🔍 **Check your SciPy version**
+
+```bash
+python -m pip show scipy
+```
+
+If it’s older than ~1.0, update:
+
+```bash
+pip install -U scipy
+```
+
+---
+
+Would you like me to show you a small test plot comparing Tukey vs Blackman so you can confirm your windowing behavior visually?
